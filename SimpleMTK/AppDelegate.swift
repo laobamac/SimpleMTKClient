@@ -83,30 +83,21 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         return true
     }
 
-    // Due to macOS App Translocation, users must store this app in /Applications
-    // Otherwise Sparkle and "Launch At Login" will not function correctly
-    // Ref: https://lapcatsoftware.com/articles/app-translocation.html
     private func checkRunPath() {
-        let pathComponents = (Bundle.main.bundlePath as NSString).pathComponents
+        let bundlePath = URL(fileURLWithPath: Bundle.main.bundlePath).standardizedFileURL.path
 
 #if DEBUG
-        // Normal users should never use the Debug Version
-        guard pathComponents[pathComponents.count - 2] != "Debug" else {
-            return
-        }
+        Log.debug("Running from \(bundlePath)")
 #else
-        guard pathComponents[pathComponents.count - 2] != "Applications" else {
-            return
+        // App Translocation or non-standard install paths can break Sparkle and
+        // launch-at-login, but they should not prevent the status app from opening.
+        if bundlePath.contains("/AppTranslocation/") {
+            Log.error("Running from App Translocation path: \(bundlePath)")
+        } else if !bundlePath.hasPrefix("/Applications/") &&
+                    !bundlePath.hasPrefix("\(NSHomeDirectory())/Applications/") {
+            Log.debug("Running outside Applications: \(bundlePath)")
         }
 #endif
-
-        Log.error("Running path unexpected!")
-
-        let alert = CriticalAlert(message: NSLocalizedString("SimpleMTK running at an unexpected path"),
-                                  options: [NSLocalizedString("Quit SimpleMTK")])
-        alert.show()
-
-        NSApp.terminate(nil)
     }
 
     private func checkAPI() {
